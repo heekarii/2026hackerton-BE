@@ -1,4 +1,7 @@
+from __future__ import annotations
 import datetime
+
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -9,7 +12,7 @@ class SignUpRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     nickname: str = Field(min_length=1, max_length=100)
-    student_id: str | None = Field(default=None, min_length=1, max_length=50)
+    student_id: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
     @field_validator("nickname")
     @classmethod
@@ -21,7 +24,7 @@ class SignUpRequest(BaseModel):
 
     @field_validator("student_id")
     @classmethod
-    def normalize_student_id(cls, value: str | None) -> str | None:
+    def normalize_student_id(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return None
         value = value.strip()
@@ -40,7 +43,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: EmailStr
-    student_id: str | None
+    student_id: Optional[str]
     nickname: str
     role: UserRole
     created_at: datetime.datetime

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import datetime
 import os
 
@@ -9,6 +10,7 @@ from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from typing import Optional
 from database import get_db
 from models import User
 
@@ -28,7 +30,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
 
 
-def authenticate_user(db: Session, email: str, password: str) -> User | None:
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     user = db.scalar(select(User).where(User.email == email.lower()))
     if user is None or not verify_password(password, user.hashed_password):
         return None
