@@ -14,7 +14,6 @@ from database import get_db
 from main import app
 from models import Base, User, Complaint, ComplaintAttachment
 from schemas import ImageAnalysisResponse
-from services.email_verification import create_verification_token
 
 # In-memory SQLite 설정
 engine = create_engine(
@@ -62,7 +61,6 @@ def fixture_auth_headers():
                 "password": password,
                 "nickname": "비전테스터",
                 "student_id": "20269999",
-                "verification_token": create_verification_token(email),
             }
         )
     db.close()
