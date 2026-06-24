@@ -8,20 +8,10 @@ from auth import authenticate_user, create_access_token, get_current_user, hash_
 from database import get_db
 from models import User, UserRole
 from schemas import (
-    EmailVerificationResponse,
-    EmailVerificationSendRequest,
     LoginRequest,
     SignUpRequest,
     TokenResponse,
     UserResponse,
-)
-from services.email_verification import (
-    EmailVerificationError,
-    InvalidSchoolEmailError,
-    VerificationCodeError,
-    create_verification_token,
-    validate_verification_token,
-    validate_school_email,
 )
 
 
@@ -38,36 +28,6 @@ def _issue_token(user: User) -> TokenResponse:
 
 
 @router.post(
-    "/email-verification/send",
-    response_model=EmailVerificationResponse,
-    summary="학교 이메일 확인",
-)
-def send_email_verification(
-    payload: EmailVerificationSendRequest,
-    db: Session = Depends(get_db),
-) -> EmailVerificationResponse:
-    email = payload.email.lower()
-    if db.scalar(select(User.id).where(User.email == email)) is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="이미 가입된 이메일입니다.",
-        )
-
-    try:
-        validate_school_email(email)
-        verification_token = create_verification_token(email)
-    except InvalidSchoolEmailError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except EmailVerificationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        )
-
-    return EmailVerificationResponse(verification_token=verification_token)
-
-
-@router.post(
     "/signup",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -75,16 +35,6 @@ def send_email_verification(
 )
 def signup(payload: SignUpRequest, db: Session = Depends(get_db)) -> User:
     email = payload.email.lower()
-    try:
-        validate_verification_token(payload.verification_token, email)
-    except VerificationCodeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except EmailVerificationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        )
-
     filters = [User.email == email]
     if payload.student_id:
         filters.append(User.student_id == payload.student_id)

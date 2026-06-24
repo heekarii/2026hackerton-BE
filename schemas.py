@@ -13,10 +13,6 @@ class SignUpRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     nickname: str = Field(min_length=1, max_length=100)
     student_id: Optional[str] = Field(default=None, min_length=1, max_length=50)
-    verification_token: str = Field(
-        min_length=1,
-        description="학교 이메일 인증 완료 후 발급된 토큰",
-    )
 
     @field_validator("nickname")
     @classmethod
@@ -35,15 +31,6 @@ class SignUpRequest(BaseModel):
         if not value:
             raise ValueError("학번은 공백일 수 없습니다.")
         return value
-
-
-class EmailVerificationSendRequest(BaseModel):
-    email: EmailStr
-
-
-class EmailVerificationResponse(BaseModel):
-    verified: bool = True
-    verification_token: str
 
 
 class LoginRequest(BaseModel):
