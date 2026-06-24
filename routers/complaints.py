@@ -3,6 +3,7 @@ import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import computed_field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,26 @@ from database import get_db
 from models import User, Complaint, Category, Department, ComplaintAttachment, ComplaintStatus
 from schemas import ComplaintCreateRequest, ComplaintResponse, ComplaintUpdate
 from services.openai_analysis import analyze_complaint
+
+
+# 처리 현황 한글 라벨 (조회 응답 표시용)
+_STATUS_LABEL = {
+    "received": "처리 전(접수됨)",
+    "in_progress": "처리 중",
+    "resolved": "처리 완료",
+    "rejected": "반려됨",
+}
+
+
+class ComplaintWithLabel(ComplaintResponse):
+    """조회용 응답. 팀원의 ComplaintResponse 를 상속해 한글 상태 라벨만 덧붙인다.
+    (원본 스키마는 수정하지 않음)
+    """
+
+    @computed_field
+    @property
+    def status_label(self) -> str:
+        return _STATUS_LABEL.get(str(self.status), str(self.status))
 
 
 def _validate_category(db: Session, category_id: Optional[int]) -> None:
@@ -144,7 +165,7 @@ def create_complaint(
 
 @router.get(
     "",
-    response_model=List[ComplaintResponse],
+    response_model=List[ComplaintWithLabel],
     summary="민원 목록 조회",
     description="등록된 민원을 최신순으로 조회합니다. 상태/카테고리 필터와 페이지네이션을 지원합니다.",
 )
@@ -166,7 +187,7 @@ def list_complaints(
 
 @router.get(
     "/me",
-    response_model=List[ComplaintResponse],
+    response_model=List[ComplaintWithLabel],
     summary="내 민원 목록 조회 (마이페이지)",
     description="로그인한 사용자가 작성한 민원만 최신순으로 조회합니다. [요구사항 민8]",
 )
@@ -191,7 +212,7 @@ def list_my_complaints(
 #       (그렇지 않으면 "me" 가 complaint_id 로 해석되어 422 발생)
 @router.get(
     "/{complaint_id}",
-    response_model=ComplaintResponse,
+    response_model=ComplaintWithLabel,
     summary="민원 상세 조회",
     responses={404: {"description": "해당 ID의 민원이 존재하지 않음"}},
 )
