@@ -57,6 +57,20 @@ uvicorn main:app --reload
 프로젝트 루트에서 ORM 설계의 논리적 오류(관계 설정, 외래키 연결 등)를 검증하기 위한 테스트 코드가 포함되어 있습니다.
 ```bash
 python test_db.py
+
+## 로그인 / 회원가입 API
+
+실행 전 `.env.example`을 참고해 환경변수를 설정하세요. 특히
+`DATABASE_URL`과 `JWT_SECRET_KEY`는 저장소에 커밋하지 않습니다.
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `/auth/signup` | 학생 회원가입 |
+| POST | `/auth/login` | JSON 로그인 및 JWT 발급 |
+| POST | `/auth/token` | Swagger OAuth2 로그인 |
+| GET | `/auth/me` | Bearer 토큰으로 내 정보 조회 |
+
+Swagger의 **Authorize** 버튼에서는 username 칸에 이메일을 입력합니다.
 ```
 
 ---

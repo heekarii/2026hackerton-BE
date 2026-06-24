@@ -1,33 +1,48 @@
+import os
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.openai_analysis_endpoint import router as openai_router
+
+from routers.auth import router as auth_router
+
 
 app = FastAPI(
     title="2026 Hackathon API",
-    description="2026년 해커톤 백엔드 서버 API 문서입니다.",
+    description="캠퍼스 민원 분석 플랫폼 API",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    openapi_url=os.getenv("OPENAPI_URL", "/openapi.json"),
+    docs_url=os.getenv("DOCS_URL", "/docs"),
+    redoc_url=os.getenv("REDOC_URL", "/redoc"),
 )
+app.include_router(openai_router, prefix="/openai")
 
-# CORS 설정 (프론트엔드 개발 시 CORS 에러 방지를 위해 기본 허용 설정)
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 해커톤 등 프로토타이핑을 위해 전체 허용. 실서버 배포 시 변경 필요
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
+
+
 @app.get("/", tags=["Root"])
 def read_root():
-    """
-    서버 연결 확인을 위한 루트 엔드포인트입니다.
-    """
     return {"message": "Welcome to 2026 Hackathon Backend API Server!"}
+
 
 @app.get("/health", tags=["System"])
 def health_check():
-    """
-    서버 헬스 체크 엔드포인트입니다.
-    """
     return {"status": "healthy"}
