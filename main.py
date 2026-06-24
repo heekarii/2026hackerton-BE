@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.openai_analysis_endpoint import router as openai_router
 
 app = FastAPI(
     title="2026 Hackathon API",
@@ -8,6 +9,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+app.include_router(openai_router, prefix="/openai")
 
 # CORS 설정 (프론트엔드 개발 시 CORS 에러 방지를 위해 기본 허용 설정)
 app.add_middleware(
