@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routers import complaints
+
 app = FastAPI(
     title="2026 Hackathon API",
     description="2026년 해커톤 백엔드 서버 API 문서입니다.",
@@ -17,6 +19,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 기능별 라우터 등록
+app.include_router(complaints.router)
 
 @app.get("/", tags=["Root"])
 def read_root():
