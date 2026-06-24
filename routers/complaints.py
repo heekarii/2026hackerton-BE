@@ -148,3 +148,36 @@ def update_complaint(
     db.commit()
     db.refresh(complaint)
     return _to_response(complaint)
+
+
+@router.delete(
+    "/{complaint_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="민원 삭제",
+    description=(
+        "민원 작성자가 본인 민원을 삭제합니다. 첨부 파일도 함께 삭제됩니다.\n\n"
+        "성공 시 본문 없이 204 No Content 를 반환합니다."
+    ),
+    responses={
+        403: {"description": "본인 민원이 아님"},
+        404: {"description": "해당 ID의 민원이 존재하지 않음"},
+    },
+)
+def delete_complaint(
+    complaint_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """민원 삭제 엔드포인트 (작성자 본인만 가능)."""
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if complaint is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="민원을 찾을 수 없습니다.")
+
+    # TODO(auth): 실제 인증 도입 시 작성자 본인 여부를 정식으로 검증한다.
+    if complaint.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 민원만 삭제할 수 있습니다.")
+
+    # 첨부(attachments)는 모델의 cascade="all, delete-orphan" 설정으로 함께 삭제된다.
+    db.delete(complaint)
+    db.commit()
+    return None
