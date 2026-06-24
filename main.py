@@ -11,6 +11,7 @@ from api.openai_analysis_endpoint import router as openai_router
 from routers.auth import router as auth_router
 from routers.complaints import router as complaints_router
 from routers.feedback import router as feedback_router
+from routers.uploads import router as uploads_router
 from routers.admin import router as admin_router
 from routers.notifications import router as notifications_router
 
@@ -42,6 +43,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(complaints_router)
 app.include_router(feedback_router)
+app.include_router(uploads_router)
 app.include_router(admin_router)
 app.include_router(notifications_router)
 

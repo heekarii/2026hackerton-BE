@@ -13,6 +13,7 @@ os.environ["USE_MOCK_AI"] = "true"  # 테스트 시 Mock AI 모드 강제 적용
 from database import get_db
 from main import app
 from models import Base, User
+from services.email_verification import create_verification_token
 
 # In-memory SQLite 설정
 engine = create_engine(
@@ -43,7 +44,8 @@ def test_create_complaint_flow():
             "email": "user@example.com",
             "password": "password123!",
             "nickname": "홍길동",
-            "student_id": "20261122"
+            "student_id": "20261122",
+            "verification_token": create_verification_token("user@example.com"),
         }
     )
     assert signup_resp.status_code == 201
