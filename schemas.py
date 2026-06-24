@@ -1,7 +1,7 @@
 from __future__ import annotations
 import datetime
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -107,4 +107,19 @@ class ComplaintUpdate(BaseModel):
     occurred_at: Optional[datetime.datetime] = Field(default=None, description="민원 발생 시간대")
     is_anonymous: Optional[bool] = Field(default=None, description="익명 등록 여부")
     category_id: Optional[int] = Field(default=None, description="민원 분류 카테고리 ID")
+
+
+class ImageAnalysisRequest(BaseModel):
+    image_url: str = Field(..., description="분석할 이미지의 URL (HTTP/HTTPS 주소)")
+    complaint_id: Optional[int] = Field(default=None, description="분석 결과를 연결할 민원 ID (선택 사항)")
+
+
+class ImageAnalysisResponse(BaseModel):
+    image_category: str = Field(..., description="이미지 자동 분류 (시설 파손, 쓰레기, 위험 요소, 청결 문제, 기타 중 하나)")
+    detected_objects: List[str] = Field(..., description="이미지에서 감지된 물체 목록")
+    danger_level: str = Field(..., description="위험도 (LOW, MEDIUM, HIGH, CRITICAL 중 하나)")
+    image_description: str = Field(..., description="이미지 상세 설명")
+    photo_based_category_hint: str = Field(..., description="사진 기반 카테고리 추천 힌트 (예: 시설관리팀, 총무팀 등 유관 부서 제안)")
+    recommended_action: str = Field(..., description="관리자를 위한 추천 조치 가이드라인")
+
 

@@ -27,7 +27,7 @@ app.include_router(openai_router, prefix="/openai")
 
 cors_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,https://2026hackerton-fe.vercel.app").split(",")
     if origin.strip()
 ]
 
