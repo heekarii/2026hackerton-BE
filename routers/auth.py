@@ -10,22 +10,18 @@ from models import User, UserRole
 from schemas import (
     EmailVerificationResponse,
     EmailVerificationSendRequest,
-    EmailVerificationVerifyRequest,
     LoginRequest,
-    MessageResponse,
     SignUpRequest,
     TokenResponse,
     UserResponse,
 )
 from services.email_verification import (
-    EmailDeliveryError,
     EmailVerificationError,
     InvalidSchoolEmailError,
     VerificationCodeError,
-    VerificationRateLimitError,
-    send_verification_code,
+    create_verification_token,
     validate_verification_token,
-    verify_code,
+    validate_school_email,
 )
 
 
@@ -43,13 +39,13 @@ def _issue_token(user: User) -> TokenResponse:
 
 @router.post(
     "/email-verification/send",
-    response_model=MessageResponse,
-    summary="학교 이메일 인증번호 발송",
+    response_model=EmailVerificationResponse,
+    summary="학교 이메일 확인",
 )
 def send_email_verification(
     payload: EmailVerificationSendRequest,
     db: Session = Depends(get_db),
-) -> MessageResponse:
+) -> EmailVerificationResponse:
     email = payload.email.lower()
     if db.scalar(select(User.id).where(User.email == email)) is not None:
         raise HTTPException(
@@ -58,39 +54,9 @@ def send_email_verification(
         )
 
     try:
-        send_verification_code(email)
+        validate_school_email(email)
+        verification_token = create_verification_token(email)
     except InvalidSchoolEmailError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except VerificationRateLimitError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(exc),
-        )
-    except EmailDeliveryError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        )
-    except EmailVerificationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        )
-
-    return MessageResponse(message="인증번호를 이메일로 전송했습니다.")
-
-
-@router.post(
-    "/email-verification/verify",
-    response_model=EmailVerificationResponse,
-    summary="학교 이메일 인증번호 확인",
-)
-def verify_email_verification(
-    payload: EmailVerificationVerifyRequest,
-) -> EmailVerificationResponse:
-    try:
-        verification_token = verify_code(payload.email, payload.code)
-    except (InvalidSchoolEmailError, VerificationCodeError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except EmailVerificationError as exc:
         raise HTTPException(

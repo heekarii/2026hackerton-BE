@@ -41,15 +41,6 @@ class EmailVerificationSendRequest(BaseModel):
     email: EmailStr
 
 
-class EmailVerificationVerifyRequest(BaseModel):
-    email: EmailStr
-    code: str = Field(pattern=r"^\d{6}$", description="6자리 이메일 인증번호")
-
-
-class MessageResponse(BaseModel):
-    message: str
-
-
 class EmailVerificationResponse(BaseModel):
     verified: bool = True
     verification_token: str

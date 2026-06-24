@@ -3,8 +3,6 @@ import os
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key"
 os.environ["EMAIL_VERIFICATION_SECRET"] = "test-email-verification-secret"
-os.environ["EMAIL_VERIFICATION_DEBUG"] = "true"
-os.environ["EMAIL_VERIFICATION_RESEND_SECONDS"] = "0"
 os.environ["SCHOOL_EMAIL_DOMAINS"] = "university.ac.kr"
 
 from fastapi.testclient import TestClient
@@ -15,10 +13,7 @@ from sqlalchemy.pool import StaticPool
 from database import get_db
 from main import app
 from models import User
-from services.email_verification import (
-    create_verification_token,
-    get_debug_verification_code,
-)
+from services.email_verification import create_verification_token
 
 
 engine = create_engine(
@@ -100,24 +95,15 @@ def test_wrong_password_is_rejected():
     assert response.status_code == 401
 
 
-def test_email_verification_flow():
+def test_email_check_returns_signup_token():
     email = "new-student@university.ac.kr"
     send_response = client.post(
         "/auth/email-verification/send",
         json={"email": email},
     )
     assert send_response.status_code == 200
-
-    code = get_debug_verification_code(email)
-    assert code is not None
-
-    verify_response = client.post(
-        "/auth/email-verification/verify",
-        json={"email": email, "code": code},
-    )
-    assert verify_response.status_code == 200
-    assert verify_response.json()["verified"] is True
-    assert verify_response.json()["verification_token"]
+    assert send_response.json()["verified"] is True
+    assert send_response.json()["verification_token"]
 
 
 def test_non_school_email_is_rejected():
