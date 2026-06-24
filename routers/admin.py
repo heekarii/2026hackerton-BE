@@ -57,11 +57,9 @@ class AdminActionResponse(BaseModel):
 class StatusUpdateResponse(BaseModel):
     complaint_id: int
     status: ComplaintStatus
-    status_label: str  # 한글 라벨 (예: "처리 완료")
+    status_label: str  # 한글 라벨 (예: "처리 완료", "반려됨")
     notified_user_id: int
-    deleted: bool = False  # 반려 시 민원이 삭제되면 True
-    message: Optional[str] = None
-    action: Optional[AdminActionResponse] = None  # 반려 삭제 시 None
+    action: AdminActionResponse
 
 
 @router.patch(
@@ -93,26 +91,8 @@ def update_complaint_status(
     author_id = complaint.user_id
     title = complaint.title
 
-    # [반려] 작성자에게 반려 알림을 보내고 민원을 삭제한다.
-    #        (첨부/처리이력/피드백은 cascade 로 함께 삭제, 알림은 complaint_id 없이 남긴다)
-    if payload.status == ComplaintStatus.REJECTED:
-        msg = f"[{title}] 민원이 반려되었습니다."
-        if payload.response_content:
-            msg += f" 사유: {payload.response_content}"
-        db.add(Notification(user_id=author_id, complaint_id=None, message=msg))
-        db.delete(complaint)
-        db.commit()
-        return StatusUpdateResponse(
-            complaint_id=complaint_id,
-            status=ComplaintStatus.REJECTED,
-            status_label=label,
-            notified_user_id=author_id,
-            deleted=True,
-            message="민원이 반려되어 삭제되었습니다.",
-            action=None,
-        )
-
-    # [그 외 상태] 상태 변경 + 처리 이력 기록 + 작성자 알림
+    # 모든 상태(반려 포함) 동일 처리: 상태만 변경하고 유지한다.
+    # 반려여도 삭제하지 않으므로 민원인은 마이페이지에서 '반려됨' 상태를 확인할 수 있다.
     complaint.status = payload.status
     content = payload.response_content or f"민원 상태가 '{label}'(으)로 변경되었습니다."
     action = AdminAction(
@@ -135,7 +115,6 @@ def update_complaint_status(
         status=complaint.status,
         status_label=label,
         notified_user_id=author_id,
-        deleted=False,
         action=AdminActionResponse.model_validate(action),
     )
 
