@@ -7,7 +7,26 @@ from sqlalchemy.orm import Session
 from auth import authenticate_user, create_access_token, get_current_user, hash_password
 from database import get_db
 from models import User, UserRole
-from schemas import LoginRequest, SignUpRequest, TokenResponse, UserResponse
+from schemas import (
+    EmailVerificationResponse,
+    EmailVerificationSendRequest,
+    EmailVerificationVerifyRequest,
+    LoginRequest,
+    MessageResponse,
+    SignUpRequest,
+    TokenResponse,
+    UserResponse,
+)
+from services.email_verification import (
+    EmailDeliveryError,
+    EmailVerificationError,
+    InvalidSchoolEmailError,
+    VerificationCodeError,
+    VerificationRateLimitError,
+    send_verification_code,
+    validate_verification_token,
+    verify_code,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -23,6 +42,66 @@ def _issue_token(user: User) -> TokenResponse:
 
 
 @router.post(
+    "/email-verification/send",
+    response_model=MessageResponse,
+    summary="학교 이메일 인증번호 발송",
+)
+def send_email_verification(
+    payload: EmailVerificationSendRequest,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    email = payload.email.lower()
+    if db.scalar(select(User.id).where(User.email == email)) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="이미 가입된 이메일입니다.",
+        )
+
+    try:
+        send_verification_code(email)
+    except InvalidSchoolEmailError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except VerificationRateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        )
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    except EmailVerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+    return MessageResponse(message="인증번호를 이메일로 전송했습니다.")
+
+
+@router.post(
+    "/email-verification/verify",
+    response_model=EmailVerificationResponse,
+    summary="학교 이메일 인증번호 확인",
+)
+def verify_email_verification(
+    payload: EmailVerificationVerifyRequest,
+) -> EmailVerificationResponse:
+    try:
+        verification_token = verify_code(payload.email, payload.code)
+    except (InvalidSchoolEmailError, VerificationCodeError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except EmailVerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+    return EmailVerificationResponse(verification_token=verification_token)
+
+
+@router.post(
     "/signup",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -30,6 +109,16 @@ def _issue_token(user: User) -> TokenResponse:
 )
 def signup(payload: SignUpRequest, db: Session = Depends(get_db)) -> User:
     email = payload.email.lower()
+    try:
+        validate_verification_token(payload.verification_token, email)
+    except VerificationCodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except EmailVerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
     filters = [User.email == email]
     if payload.student_id:
         filters.append(User.student_id == payload.student_id)

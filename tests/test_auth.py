@@ -2,6 +2,10 @@ import os
 
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key"
+os.environ["EMAIL_VERIFICATION_SECRET"] = "test-email-verification-secret"
+os.environ["EMAIL_VERIFICATION_DEBUG"] = "true"
+os.environ["EMAIL_VERIFICATION_RESEND_SECONDS"] = "0"
+os.environ["SCHOOL_EMAIL_DOMAINS"] = "university.ac.kr"
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -11,6 +15,10 @@ from sqlalchemy.pool import StaticPool
 from database import get_db
 from main import app
 from models import User
+from services.email_verification import (
+    create_verification_token,
+    get_debug_verification_code,
+)
 
 
 engine = create_engine(
@@ -35,23 +43,25 @@ client = TestClient(app)
 
 
 def test_signup_login_and_me():
+    email = "student@university.ac.kr"
     signup_response = client.post(
         "/auth/signup",
         json={
-            "email": "student@example.com",
+            "email": email,
             "password": "password123!",
             "nickname": "학생",
             "student_id": "20260001",
+            "verification_token": create_verification_token(email),
         },
     )
     assert signup_response.status_code == 201
-    assert signup_response.json()["email"] == "student@example.com"
+    assert signup_response.json()["email"] == email
     assert signup_response.json()["role"] == "student"
     assert "hashed_password" not in signup_response.json()
 
     login_response = client.post(
         "/auth/login",
-        json={"email": "student@example.com", "password": "password123!"},
+        json={"email": email, "password": "password123!"},
     )
     assert login_response.status_code == 200
     access_token = login_response.json()["access_token"]
@@ -65,13 +75,15 @@ def test_signup_login_and_me():
 
 
 def test_duplicate_email_is_rejected():
+    email = "student@university.ac.kr"
     response = client.post(
         "/auth/signup",
         json={
-            "email": "student@example.com",
+            "email": email,
             "password": "another-password",
             "nickname": "중복",
             "student_id": "20260002",
+            "verification_token": create_verification_token(email),
         },
     )
     assert response.status_code == 409
@@ -80,6 +92,52 @@ def test_duplicate_email_is_rejected():
 def test_wrong_password_is_rejected():
     response = client.post(
         "/auth/login",
-        json={"email": "student@example.com", "password": "wrong-password"},
+        json={
+            "email": "student@university.ac.kr",
+            "password": "wrong-password",
+        },
     )
     assert response.status_code == 401
+
+
+def test_email_verification_flow():
+    email = "new-student@university.ac.kr"
+    send_response = client.post(
+        "/auth/email-verification/send",
+        json={"email": email},
+    )
+    assert send_response.status_code == 200
+
+    code = get_debug_verification_code(email)
+    assert code is not None
+
+    verify_response = client.post(
+        "/auth/email-verification/verify",
+        json={"email": email, "code": code},
+    )
+    assert verify_response.status_code == 200
+    assert verify_response.json()["verified"] is True
+    assert verify_response.json()["verification_token"]
+
+
+def test_non_school_email_is_rejected():
+    response = client.post(
+        "/auth/email-verification/send",
+        json={"email": "student@gmail.com"},
+    )
+    assert response.status_code == 400
+
+
+def test_signup_requires_matching_verification_token():
+    response = client.post(
+        "/auth/signup",
+        json={
+            "email": "other@university.ac.kr",
+            "password": "password123!",
+            "nickname": "다른 학생",
+            "verification_token": create_verification_token(
+                "verified@university.ac.kr"
+            ),
+        },
+    )
+    assert response.status_code == 400
