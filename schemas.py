@@ -55,9 +55,14 @@ class ComplaintCreate(BaseModel):
 
 
 class ComplaintResponse(BaseModel):
-    """민원 등록/조회 응답."""
+    """민원 등록/조회 응답.
+
+    익명 민원(is_anonymous=True)인 경우 작성자 정보(user_id, author_nickname)는
+    None 으로 마스킹하여 응답한다. (안전장치: 익명 공개)
+    """
     id: int
-    user_id: int
+    user_id: Optional[int] = None  # 익명이면 None 으로 마스킹
+    author_nickname: Optional[str] = None  # 익명이면 None
     title: str
     content: str
     expectation: Optional[str]

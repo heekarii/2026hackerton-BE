@@ -1,12 +1,26 @@
-from fastapi import APIRouter, Depends, status
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user_id
-from models import Complaint, ComplaintAttachment
+from models import Complaint, ComplaintAttachment, ComplaintStatus
 import schemas
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
+
+
+def _to_response(complaint: Complaint) -> schemas.ComplaintResponse:
+    """ORM 민원 객체를 응답 스키마로 변환하며, 익명 민원의 작성자 정보를 마스킹한다."""
+    data = schemas.ComplaintResponse.model_validate(complaint)
+    if complaint.is_anonymous:
+        data.user_id = None
+        data.author_nickname = None
+    else:
+        data.user_id = complaint.user_id
+        data.author_nickname = complaint.user.nickname if complaint.user else None
+    return data
 
 
 @router.post(
@@ -49,3 +63,49 @@ def create_complaint(
     db.commit()
     db.refresh(complaint)
     return complaint
+
+
+@router.get(
+    "",
+    response_model=List[schemas.ComplaintResponse],
+    summary="민원 목록 조회",
+    description=(
+        "등록된 민원을 최신순으로 조회합니다. 상태/카테고리로 필터링하고 페이지네이션할 수 있습니다.\n\n"
+        "익명 민원은 작성자 정보가 마스킹되어 응답됩니다."
+    ),
+)
+def list_complaints(
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0, description="건너뛸 개수 (페이지네이션)"),
+    limit: int = Query(20, ge=1, le=100, description="가져올 최대 개수"),
+    status_filter: Optional[ComplaintStatus] = Query(
+        None, alias="status", description="민원 상태로 필터링"
+    ),
+    category_id: Optional[int] = Query(None, description="카테고리 ID로 필터링"),
+):
+    """민원 목록 조회 엔드포인트."""
+    query = db.query(Complaint)
+    if status_filter is not None:
+        query = query.filter(Complaint.status == status_filter)
+    if category_id is not None:
+        query = query.filter(Complaint.category_id == category_id)
+
+    complaints = (
+        query.order_by(Complaint.created_at.desc()).offset(skip).limit(limit).all()
+    )
+    return [_to_response(c) for c in complaints]
+
+
+@router.get(
+    "/{complaint_id}",
+    response_model=schemas.ComplaintResponse,
+    summary="민원 상세 조회",
+    description="민원 ID로 단건을 조회합니다. 익명 민원은 작성자 정보가 마스킹됩니다.",
+    responses={404: {"description": "해당 ID의 민원이 존재하지 않음"}},
+)
+def get_complaint(complaint_id: int, db: Session = Depends(get_db)):
+    """민원 상세 조회 엔드포인트."""
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if complaint is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="민원을 찾을 수 없습니다.")
+    return _to_response(complaint)
