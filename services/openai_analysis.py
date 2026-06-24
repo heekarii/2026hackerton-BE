@@ -121,8 +121,12 @@ def analyze_complaint(text: str) -> ComplaintAnalysis:
     OpenAI Chat API를 활용하여 민원 텍스트를 구조화된 데이터 형태로 분석합니다.
     만약 USE_MOCK_AI=true 이거나 실제 API 호출이 실패할 경우 Mock 응답으로 대체됩니다.
     """
-    # .env 파일을 동적으로 다시 로드하여 런타임 중의 변경 사항을 반영합니다.
-    load_dotenv(override=True)
+    # .env 파일을 동적으로 다시 로드하여 런타임 중의 변경 사항을 반영합니다. (테스트 환경인 pytest 하에서는 강제 덮어쓰기 방지)
+    import sys
+    if "pytest" not in sys.modules:
+        load_dotenv(override=True)
+    else:
+        load_dotenv()
     
     # Mock AI 모드 여부 확인
     use_mock = os.getenv("USE_MOCK_AI", "false").lower() in ("true", "1", "t", "y", "yes")
@@ -221,8 +225,12 @@ def analyze_image(image_url: str) -> ImageAnalysis:
     """
     OpenAI Vision API 및 Structured Outputs를 사용해 민원 이미지를 정밀 분석합니다.
     """
-    # .env 파일 로드
-    load_dotenv(override=True)
+    # .env 파일 로드 (테스트 환경인 pytest 하에서는 강제 덮어쓰기 방지)
+    import sys
+    if "pytest" not in sys.modules:
+        load_dotenv(override=True)
+    else:
+        load_dotenv()
     
     use_mock = os.getenv("USE_MOCK_AI", "false").lower() in ("true", "1", "t", "y", "yes")
     

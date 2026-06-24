@@ -93,10 +93,18 @@ def test_department_recommend_api_returns_candidates():
 
 
 def test_admin_can_route_complaint_and_save_department():
+    import os
+    database_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    connect_args = {}
+    pool_kwargs = {}
+    if database_url.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+        pool_kwargs["poolclass"] = StaticPool
+
     engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        database_url,
+        connect_args=connect_args,
+        **pool_kwargs
     )
     for table in (
         User.__table__,

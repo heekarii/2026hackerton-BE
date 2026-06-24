@@ -5,20 +5,27 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# 테스트 환경 변수 설정
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
-os.environ["JWT_SECRET_KEY"] = "test-secret-key"
-os.environ["USE_MOCK_AI"] = "true"  # 우선 Mock AI 모드로 안전하게 테스트
+# 테스트 환경 변수 설정 (기존 값이 없을 때만 기본값 적용)
+os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+os.environ.setdefault("USE_MOCK_AI", "true")  # 우선 Mock AI 모드로 안전하게 테스트
 
 from database import get_db
 from main import app
 from models import Base
 
-# SQLite 엔진 및 DB 초기화
+# 데이터베이스 URL에 따른 엔진 초기화
+database_url = os.environ["DATABASE_URL"]
+connect_args = {}
+pool_kwargs = {}
+if database_url.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+    pool_kwargs["poolclass"] = StaticPool
+
 engine = create_engine(
-    "sqlite+pysqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+    database_url,
+    connect_args=connect_args,
+    **pool_kwargs
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)

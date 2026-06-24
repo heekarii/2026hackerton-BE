@@ -1,7 +1,7 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
-os.environ["JWT_SECRET_KEY"] = "test-secret-key"
+os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -12,11 +12,17 @@ from database import get_db
 from main import app
 from models import User
 
+database_url = os.environ["DATABASE_URL"]
+connect_args = {}
+pool_kwargs = {}
+if database_url.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+    pool_kwargs["poolclass"] = StaticPool
 
 engine = create_engine(
-    "sqlite+pysqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+    database_url,
+    connect_args=connect_args,
+    **pool_kwargs
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 User.__table__.create(bind=engine)
