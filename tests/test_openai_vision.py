@@ -66,7 +66,8 @@ def fixture_auth_headers():
             json={
                 "email": email,
                 "password": password,
-                "nickname": "비전테스터",
+                "name": "비전테스터",
+                "department": "소프트웨어학과",
                 "student_id": "20269999",
             }
         )

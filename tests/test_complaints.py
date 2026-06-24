@@ -49,7 +49,8 @@ def test_create_complaint_flow():
         json={
             "email": "user@example.com",
             "password": "password123!",
-            "nickname": "홍길동",
+            "name": "홍길동",
+            "department": "컴퓨터공학과",
             "student_id": "20261122",
         }
     )

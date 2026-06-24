@@ -11,26 +11,34 @@ from models import UserRole
 class SignUpRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    nickname: str = Field(min_length=1, max_length=100)
-    student_id: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=100)
+    department: str = Field(min_length=1, max_length=100)
+    student_id: str = Field(min_length=1, max_length=50)
+    nickname: Optional[str] = Field(default=None, min_length=1, max_length=100)
 
-    @field_validator("nickname")
+    @field_validator("name", "department")
     @classmethod
-    def validate_nickname(cls, value: str) -> str:
+    def validate_required_text(cls, value: str) -> str:
         value = value.strip()
         if not value:
-            raise ValueError("닉네임은 공백일 수 없습니다.")
+            raise ValueError("공백만 입력할 수 없습니다.")
         return value
 
     @field_validator("student_id")
     @classmethod
-    def normalize_student_id(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
+    def normalize_student_id(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("학번은 공백일 수 없습니다.")
         return value
+
+    @field_validator("nickname")
+    @classmethod
+    def normalize_nickname(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
 
 class LoginRequest(BaseModel):
@@ -44,6 +52,8 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     student_id: Optional[str]
+    name: Optional[str]
+    department: Optional[str]
     nickname: str
     role: UserRole
     created_at: datetime.datetime

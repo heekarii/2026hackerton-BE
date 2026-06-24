@@ -47,12 +47,17 @@ def test_signup_login_and_me():
         json={
             "email": email,
             "password": "password123!",
-            "nickname": "학생",
+            "name": "학생",
+            "department": "컴퓨터공학과",
             "student_id": "20260001",
         },
     )
     assert signup_response.status_code == 201
     assert signup_response.json()["email"] == email
+    assert signup_response.json()["name"] == "학생"
+    assert signup_response.json()["department"] == "컴퓨터공학과"
+    assert signup_response.json()["student_id"] == "20260001"
+    assert signup_response.json()["nickname"] == "학생"
     assert signup_response.json()["role"] == "student"
     assert "hashed_password" not in signup_response.json()
 
@@ -78,7 +83,8 @@ def test_duplicate_email_is_rejected():
         json={
             "email": email,
             "password": "another-password",
-            "nickname": "중복",
+            "name": "중복",
+            "department": "경영학과",
             "student_id": "20260002",
         },
     )
@@ -102,7 +108,20 @@ def test_signup_without_email_verification():
         json={
             "email": "other@university.ac.kr",
             "password": "password123!",
-            "nickname": "다른 학생",
+            "name": "다른 학생",
+            "department": "전자정보통신공학과",
+            "student_id": "20260003",
         },
     )
     assert response.status_code == 201
+
+
+def test_signup_requires_student_profile_fields():
+    response = client.post(
+        "/auth/signup",
+        json={
+            "email": "missing-profile@university.ac.kr",
+            "password": "password123!",
+        },
+    )
+    assert response.status_code == 422
