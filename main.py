@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.openai_analysis_endpoint import router as openai_router
 
 from routers.auth import router as auth_router
 
@@ -14,6 +15,7 @@ app = FastAPI(
     docs_url=os.getenv("DOCS_URL", "/docs"),
     redoc_url=os.getenv("REDOC_URL", "/redoc"),
 )
+app.include_router(openai_router, prefix="/openai")
 
 cors_origins = [
     origin.strip()
