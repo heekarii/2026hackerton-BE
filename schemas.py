@@ -54,6 +54,17 @@ class ComplaintCreate(BaseModel):
     )
 
 
+class ComplaintUpdate(BaseModel):
+    """민원 수정 요청. 보낸 필드만 부분 수정한다(미전송 필드는 유지)."""
+    title: Optional[str] = Field(None, max_length=255, description="민원 제목")
+    content: Optional[str] = Field(None, description="민원 사항 본문")
+    expectation: Optional[str] = Field(None, description="개선 희망 사항")
+    location: Optional[str] = Field(None, max_length=255, description="민원 발생 장소")
+    occurred_at: Optional[datetime.datetime] = Field(None, description="민원 발생 시간대")
+    is_anonymous: Optional[bool] = Field(None, description="익명 등록 여부")
+    category_id: Optional[int] = Field(None, description="민원 분류 카테고리 ID")
+
+
 class ComplaintResponse(BaseModel):
     """민원 등록/조회 응답.
 

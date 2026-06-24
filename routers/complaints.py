@@ -109,3 +109,42 @@ def get_complaint(complaint_id: int, db: Session = Depends(get_db)):
     if complaint is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="민원을 찾을 수 없습니다.")
     return _to_response(complaint)
+
+
+@router.patch(
+    "/{complaint_id}",
+    response_model=schemas.ComplaintResponse,
+    summary="민원 수정",
+    description=(
+        "민원 작성자가 본인 민원의 내용을 부분 수정합니다. 보낸 필드만 변경됩니다.\n\n"
+        "처리 상태(status) 변경은 관리자 권한이므로 이 엔드포인트에서 다루지 않습니다."
+    ),
+    responses={
+        403: {"description": "본인 민원이 아님"},
+        404: {"description": "해당 ID의 민원이 존재하지 않음"},
+    },
+)
+def update_complaint(
+    complaint_id: int,
+    payload: schemas.ComplaintUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """민원 수정 엔드포인트 (작성자 본인만 가능)."""
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if complaint is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="민원을 찾을 수 없습니다.")
+
+    # TODO(auth): 실제 인증 도입 시 작성자 본인 여부를 정식으로 검증한다.
+    if complaint.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 민원만 수정할 수 있습니다.")
+
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="수정할 내용이 없습니다.")
+    for field, value in updates.items():
+        setattr(complaint, field, value)
+
+    db.commit()
+    db.refresh(complaint)
+    return _to_response(complaint)
