@@ -100,7 +100,26 @@ class Complaint(Base):
     
     # [요구사항 9] AI 유사도 검색을 위한 pgvector 임베딩 컬럼 (1536차원)
     embedding: Mapped[Optional[Vector]] = mapped_column(Vector(1536), nullable=True)
-    
+
+    # 위치 좌표 (지도 시각화용)
+    latitude: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+
+    # OpenAI 분석 결과 컬럼들 (분석 서비스가 등록 후 채움)
+    # NOTE: 실제 Supabase DB 스키마에 이미 존재하던 컬럼들을 models.py 에 반영한 것.
+    #       ai_sensitive 는 NOT NULL 이라 등록 시점 누락을 막기 위해 기본값 False 를 둔다.
+    ai_sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ai_category: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_subcategory: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_sentiment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_urgency: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_risk_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_department: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_keywords: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    ai_expected_days: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    ai_recommended_action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     
