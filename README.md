@@ -71,6 +71,21 @@ python test_db.py
 | GET | `/auth/me` | Bearer 토큰으로 내 정보 조회 |
 
 Swagger의 **Authorize** 버튼에서는 username 칸에 이메일을 입력합니다.
+
+## 유관 부서 라우팅 API
+
+민원 제목, 내용, 개선 희망 사항, 장소를 부서별 키워드 목록과 비교해
+가장 적합한 부서를 추천합니다. OpenAI 분석 결과의 부서명을
+`suggested_department`로 전달하면 목록의 이름 또는 별칭과 매칭해
+추천 점수에 반영합니다.
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/departments` | 부서, 키워드, 별칭 목록 |
+| POST | `/departments/recommend` | 저장 없이 추천 후보 확인 |
+| POST | `/complaints/{id}/department/recommend` | 관리자 자동 매칭 및 저장 |
+| PATCH | `/complaints/{id}/department` | 관리자 수동 부서 지정 |
+| GET | `/departments/{name}/complaints` | 부서별 배정 민원 조회 |
 ```
 
 ---
