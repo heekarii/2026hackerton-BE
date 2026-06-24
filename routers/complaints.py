@@ -165,6 +165,31 @@ def list_complaints(
 
 
 @router.get(
+    "/me",
+    response_model=List[ComplaintResponse],
+    summary="내 민원 목록 조회 (마이페이지)",
+    description="로그인한 사용자가 작성한 민원만 최신순으로 조회합니다. [요구사항 민8]",
+)
+def list_my_complaints(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = Query(0, ge=0, description="건너뛸 개수 (페이지네이션)"),
+    limit: int = Query(20, ge=1, le=100, description="가져올 최대 개수"),
+) -> List[Complaint]:
+    """내가 작성한 민원 목록 (마이페이지)."""
+    return (
+        db.query(Complaint)
+        .filter(Complaint.user_id == current_user.id)
+        .order_by(Complaint.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+# NOTE: "/me" 라우트는 반드시 "/{complaint_id}" 보다 먼저 정의되어야 한다.
+#       (그렇지 않으면 "me" 가 complaint_id 로 해석되어 422 발생)
+@router.get(
     "/{complaint_id}",
     response_model=ComplaintResponse,
     summary="민원 상세 조회",

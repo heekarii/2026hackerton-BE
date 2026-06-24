@@ -72,6 +72,18 @@ python test_db.py
 
 Swagger의 **Authorize** 버튼에서는 username 칸에 이메일을 입력합니다.
 
+## 만족도 피드백 API
+
+민원 작성자는 해결 완료된 본인 민원에 1점~5점 만족도와 추가 의견을
+등록할 수 있습니다. 민원당 피드백은 한 건만 등록되며 이후 조회·수정할
+수 있습니다.
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `/complaints/{id}/feedback` | 해결된 민원 만족도 등록 |
+| GET | `/complaints/{id}/feedback` | 본인 피드백 조회 |
+| PATCH | `/complaints/{id}/feedback` | 본인 피드백 수정 |
+
 ## 유관 부서 라우팅 API
 
 민원 제목, 내용, 개선 희망 사항, 장소를 부서별 키워드 목록과 비교해
