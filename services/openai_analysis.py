@@ -40,7 +40,7 @@ def get_mock_analysis(text: str) -> ComplaintAnalysis:
         urgency = "MEDIUM"
 
     # 키워드 매핑 기반의 카테고리/부서 추정
-    if any(word in text for word in ["에어컨", "온풍기", "난방", "냉방", "히터", "창문", "조명", "배관", "누수", "수리", "고장"]):
+    if any(word in text for word in ["에어컨", "온풍기", "난방", "냉방", "히터", "창문", "조명", "배관", "누수", "수리", "고장", "전등", "전구", "전기", "램프"]):
         category = "시설"
         subcategory = "시설물 설비 고장 및 수리 요청"
         department = "시설관리팀"

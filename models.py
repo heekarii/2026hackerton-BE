@@ -1,8 +1,7 @@
 import datetime
 from typing import List, Optional
 import enum
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index, Numeric
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index, Numeric, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 
@@ -92,11 +91,28 @@ class Complaint(Base):
     location: Mapped[str] = mapped_column(String(255), nullable=False)       # 장소 (예: "IT관 3층 복도")
     occurred_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)  # 민원 발생 시간대
     
+    # GPS 위도/경도
+    latitude: Mapped[Optional[float]] = mapped_column(Numeric(10, 8), nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Numeric(11, 8), nullable=True)
+    
     # [요구사항 8] AI 민원 분석 결과 컬럼들
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
     urgency_score: Mapped[Optional[float]] = mapped_column(Numeric(3, 2), nullable=True) # 긴급도 점수 (1.00 ~ 5.00)
     is_sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False) # 민감 민원 여부 (개인정보 노출, 언어폭력 등)
     recommended_dept_id: Mapped[Optional[int]] = mapped_column(ForeignKey("departments.id"), nullable=True) # AI 추천 담당 부서
+    
+    # AI 상세 분석 필드들
+    ai_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ai_subcategory: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ai_sentiment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ai_urgency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ai_sensitive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ai_risk_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ai_department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_keywords: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    ai_expected_days: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ai_recommended_action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # [요구사항 9] AI 유사도 검색을 위한 pgvector 임베딩 컬럼 (1536차원)
     embedding: Mapped[Optional[Vector]] = mapped_column(Vector(1536), nullable=True)
@@ -183,5 +199,5 @@ class Report(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False) # 예: "2026학년도 1학기 통계 보고서"
     term: Mapped[str] = mapped_column(String(50), nullable=False)       # 예: "2026-1", "2026-annual"
     summary: Mapped[str] = mapped_column(Text, nullable=False)          # 총평 및 요약
-    statistics_json: Mapped[dict] = mapped_column(JSONB, nullable=False) # 카테고리별/시간대별/부서별 상세 통계 수치
+    statistics_json: Mapped[dict] = mapped_column(JSON, nullable=False) # 카테고리별/시간대별/부서별 상세 통계 수치
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)

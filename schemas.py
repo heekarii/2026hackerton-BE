@@ -54,3 +54,46 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserResponse
+
+
+class ComplaintCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255, description="민원 제목")
+    content: str = Field(..., min_length=1, description="민원 내용")
+    desired_solution: Optional[str] = Field(default=None, description="개선 희망 사항")
+    location_name: str = Field(..., min_length=1, max_length=255, description="민원 발생 장소 명칭")
+    latitude: Optional[float] = Field(default=None, description="위도")
+    longitude: Optional[float] = Field(default=None, description="경도")
+    image_url: Optional[str] = Field(default=None, description="첨부 이미지 URL")
+    is_anonymous: bool = Field(default=False, description="익명 여부")
+
+
+class ComplaintResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    title: str
+    content: str
+    expectation: Optional[str]
+    is_anonymous: bool
+    status: str
+    location: str
+    occurred_at: datetime.datetime
+    latitude: Optional[float]
+    longitude: Optional[float]
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    
+    # AI 분석 관련 필드
+    ai_category: Optional[str]
+    ai_subcategory: Optional[str]
+    ai_sentiment: Optional[str]
+    ai_urgency: Optional[str]
+    ai_sensitive: bool
+    ai_risk_type: Optional[str]
+    ai_department: Optional[str]
+    ai_summary: Optional[str]
+    ai_keywords: Optional[list[str]]
+    ai_expected_days: Optional[str]
+    ai_recommended_action: Optional[str]
+
