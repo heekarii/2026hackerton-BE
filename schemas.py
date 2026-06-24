@@ -76,6 +76,7 @@ class ComplaintCreateRequest(BaseModel):
     location_name: str = Field(..., min_length=1, max_length=255, description="민원 발생 장소 명칭")
     latitude: Optional[float] = Field(default=None, description="위도")
     longitude: Optional[float] = Field(default=None, description="경도")
+    occurred_at: Optional[datetime.datetime] = Field(default=None, description="민원 발생 시간대 (미입력 시 등록 시각으로 자동 설정)")
     image_url: Optional[str] = Field(default=None, description="첨부 이미지 URL")
     is_anonymous: bool = Field(default=False, description="익명 여부")
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
 from models import User, Complaint, Category, Department, ComplaintAttachment, ComplaintStatus
+from notification_model import Notification
 from schemas import ComplaintCreateRequest, ComplaintResponse, ComplaintUpdate
 from services.openai_analysis import analyze_complaint
 
@@ -106,7 +107,7 @@ def create_complaint(
         is_anonymous=payload.is_anonymous,
         status=ComplaintStatus.RECEIVED,
         location=payload.location_name,
-        occurred_at=datetime.datetime.utcnow(),
+        occurred_at=payload.occurred_at or datetime.datetime.utcnow(),
         
         # AI 분석 매핑 컬럼
         category_id=category.id,
@@ -281,6 +282,11 @@ def delete_complaint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="민원을 찾을 수 없습니다.")
     if complaint.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인이 작성한 민원만 삭제할 수 있습니다.")
+
+    # 이 민원을 참조하는 알림의 링크를 끊는다 (notifications FK 보호; 알림 자체는 보존)
+    db.query(Notification).filter(Notification.complaint_id == complaint_id).update(
+        {Notification.complaint_id: None}, synchronize_session=False
+    )
     db.delete(complaint)
     db.commit()
     return None
