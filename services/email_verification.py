@@ -6,6 +6,7 @@ import hmac
 import os
 import secrets
 import smtplib
+import ssl
 import threading
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -69,7 +70,7 @@ def _secret_key() -> str:
 
 
 def _allowed_domains() -> set[str]:
-    configured = os.getenv("SCHOOL_EMAIL_DOMAINS", "university.ac.kr")
+    configured = os.getenv("SCHOOL_EMAIL_DOMAINS", "sju.ac.kr")
     return {
         domain.strip().lower().lstrip("@")
         for domain in configured.split(",")
@@ -100,27 +101,44 @@ def _send_email(email: str, code: str) -> None:
     username = os.getenv("SMTP_USERNAME")
     password = os.getenv("SMTP_PASSWORD")
     from_email = os.getenv("SMTP_FROM_EMAIL") or username
-    if not host or not from_email:
-        raise EmailDeliveryError("SMTP 환경변수가 설정되지 않았습니다.")
+    if not host or not username or not password or not from_email:
+        raise EmailDeliveryError(
+            "SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_EMAIL 설정이 필요합니다."
+        )
 
     port = int(os.getenv("SMTP_PORT", "587"))
     use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+    if use_tls and use_ssl:
+        raise EmailDeliveryError("SMTP_USE_TLS와 SMTP_USE_SSL은 동시에 사용할 수 없습니다.")
+
     message = EmailMessage()
-    message["Subject"] = "[캠퍼스 민원] 이메일 인증번호"
+    message["Subject"] = "[캠퍼스 민원] 학교 이메일 인증번호"
     message["From"] = from_email
     message["To"] = email
     message.set_content(
-        f"회원가입 인증번호는 {code}입니다.\n"
-        f"{os.getenv('EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES', '10')}분 안에 입력해 주세요."
+        "캠퍼스 민원 분석 플랫폼 회원가입을 위한 인증번호입니다.\n\n"
+        f"인증번호: {code}\n\n"
+        f"{os.getenv('EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES', '10')}분 안에 입력해 주세요.\n"
+        "본인이 요청하지 않았다면 이 메일을 무시해 주세요."
     )
 
     try:
-        with smtplib.SMTP(host, port, timeout=10) as smtp:
+        context = ssl.create_default_context()
+        smtp_class = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+        smtp_kwargs = {"host": host, "port": port, "timeout": 10}
+        if use_ssl:
+            smtp_kwargs["context"] = context
+
+        with smtp_class(**smtp_kwargs) as smtp:
             if use_tls:
-                smtp.starttls()
-            if username and password:
-                smtp.login(username, password)
+                smtp.starttls(context=context)
+            smtp.login(username, password)
             smtp.send_message(message)
+    except smtplib.SMTPAuthenticationError as exc:
+        raise EmailDeliveryError(
+            "SMTP 인증에 실패했습니다. Gmail 앱 비밀번호를 확인해 주세요."
+        ) from exc
     except (OSError, smtplib.SMTPException) as exc:
         raise EmailDeliveryError("인증 메일 전송에 실패했습니다.") from exc
 
