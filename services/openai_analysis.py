@@ -24,6 +24,8 @@ def analyze_complaint(text: str) -> ComplaintAnalysis:
     """
     OpenAI Chat API를 활용하여 민원 텍스트를 구조화된 데이터 형태로 분석합니다.
     """
+    # .env 파일을 동적으로 다시 로드하여 런타임 중의 변경 사항을 반영합니다.
+    load_dotenv(override=True)
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다. .env 파일을 확인해 주세요.")
