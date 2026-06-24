@@ -154,3 +154,116 @@ def analyze_complaint(text: str) -> ComplaintAnalysis:
     except Exception as e:
         print(f"[AI Analysis] 에러 발생: OpenAI API 호출 실패 ({e}). Mock 모드로 대체하여 결과를 반환합니다.")
         return get_mock_analysis(text)
+
+
+class ImageAnalysis(BaseModel):
+    image_category: str = Field(..., description="이미지 자동 분류. '시설 파손', '쓰레기', '위험 요소', '청결 문제', '기타' 중 하나만 선택해야 합니다.")
+    detected_objects: List[str] = Field(..., description="이미지에서 감지된 물체/요소 목록")
+    danger_level: str = Field(..., description="위험도. 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL' 중 하나만 선택해야 합니다.")
+    image_description: str = Field(..., description="이미지 내용 상세 묘사")
+    photo_based_category_hint: str = Field(..., description="사진 기반 카테고리 추천 힌트 (예: 시설관리팀, 총무팀 등 관련 유관 부서 제안)")
+    recommended_action: str = Field(..., description="추천 조치 가이드라인")
+
+
+def get_mock_image_analysis(image_url: str) -> ImageAnalysis:
+    """
+    OpenAI API를 사용할 수 없거나 Mock 모드가 활성화되었을 때 사용하는 가짜 이미지 분석 결과를 생성합니다.
+    """
+    category = "기타"
+    detected = ["정체불명의 물체"]
+    danger = "LOW"
+    description = "테스트용 이미지입니다. 복도 혹은 실내 공간을 보여주고 있습니다."
+    hint = "학생지원팀"
+    action = "민원 현장을 확인하고 담당 부서에 처리를 요청하세요."
+
+    # 간단히 URL 키워드로 목 데이터 다채롭게 생성
+    url_lower = image_url.lower()
+    if any(k in url_lower for k in ["trash", "garbage", "waste", "dirty", "clean", "쓰레기", "청소"]):
+        category = "쓰레기"
+        detected = ["쓰레기 봉투", "플라스틱 컵", "일회용품 배출함"]
+        danger = "MEDIUM"
+        description = "[MOCK] 분리수거함 및 쓰레기 주변에 종이 상자와 페트병 등 쓰레기가 수거되지 않고 방치되어 있습니다."
+        hint = "총무팀"
+        action = "청소 미화 담당 직원을 해당 층/구역에 즉각 배정하여 방치된 쓰레기를 수거하고 소독 및 청소를 실시합니다."
+    elif any(k in url_lower for k in ["broken", "damage", "leak", "light", "fire", "electric", "파손", "고장", "누수"]):
+        category = "시설 파손"
+        detected = ["파손된 설비", "누수 물방울", "전등 불량"]
+        danger = "HIGH"
+        description = "[MOCK] 천장 배관 부위에서 물이 고여 바닥으로 떨어지고 있거나, 시설물 외벽 일부가 균열/파손되어 있습니다."
+        hint = "시설관리팀"
+        action = "해당 구역 시설 안전 점검반을 급파하여 손상 상태를 정밀 체크하고 임시 물막이 설치 및 배관 보수 공사를 추진합니다."
+    elif any(k in url_lower for k in ["danger", "hazard", "wire", "safety", "위험", "사고"]):
+        category = "위험 요소"
+        detected = ["노출된 전선", "깨진 유리", "미끄러운 바닥"]
+        danger = "CRITICAL"
+        description = "[MOCK] 안전 펜스가 설치되지 않은 공사 구역 또는 고압 전선이 외부로 노출되어 감전 위험이 매우 큽니다."
+        hint = "보안팀"
+        action = "즉각 통제 라인을 구축하고 위험 안내 경고판을 부착한 뒤 전문 안전 요원 및 관리반이 현장 통제를 개시합니다."
+    elif any(k in url_lower for k in ["toilet", "restroom", "청결", "위생"]):
+        category = "청결 문제"
+        detected = ["오염물", "세면대 물때", "방치된 비누"]
+        danger = "MEDIUM"
+        description = "[MOCK] 기숙사 공동 위생 구역 세면대 및 화장실 내 바닥 오염 상태가 불량하며 청결 작업이 지연되었습니다."
+        hint = "총무팀"
+        action = "해당 화장실 담당 미화 인력에게 즉각 위생 점검 및 바닥 물청소, 세제 오염 제거를 지시합니다."
+
+    return ImageAnalysis(
+        image_category=category,
+        detected_objects=detected,
+        danger_level=danger,
+        image_description=description,
+        photo_based_category_hint=hint,
+        recommended_action=action
+    )
+
+
+def analyze_image(image_url: str) -> ImageAnalysis:
+    """
+    OpenAI Vision API 및 Structured Outputs를 사용해 민원 이미지를 정밀 분석합니다.
+    """
+    # .env 파일 로드
+    load_dotenv(override=True)
+    
+    use_mock = os.getenv("USE_MOCK_AI", "false").lower() in ("true", "1", "t", "y", "yes")
+    
+    if use_mock:
+        print("[AI Image Analysis] USE_MOCK_AI가 설정되어 Mock 이미지 분석 결과를 반환합니다.")
+        return get_mock_image_analysis(image_url)
+        
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("[AI Image Analysis] 경고: OPENAI_API_KEY 환경 변수가 없습니다. Mock 이미지 분석 결과로 대체합니다.")
+        return get_mock_image_analysis(image_url)
+        
+    try:
+        client = OpenAI(api_key=api_key)
+        
+        # GPT-4o-mini는 Vision과 Structured Outputs를 동시에 완벽히 지원함
+        completion = client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "당신은 캠퍼스 내 민원 사진(시설 파손, 쓰레기 방치, 청결 문제, 안전 위험 요소 등)을 판별하고 분석하는 안전 행정 보조 AI 전문가입니다."
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "제출된 민원 이미지 파일을 면밀히 관찰하고 지정된 형식에 맞춰 정밀 분석 결과를 리턴해 주세요."},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url,
+                            },
+                        },
+                    ],
+                }
+            ],
+            response_format=ImageAnalysis,
+            temperature=0.0
+        )
+        return completion.choices[0].message.parsed
+    except Exception as e:
+        print(f"[AI Image Analysis] 에러 발생: OpenAI API 호출 실패 ({e}). Mock 이미지 분석 결과로 대체합니다.")
+        return get_mock_image_analysis(image_url)
+

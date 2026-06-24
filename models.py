@@ -153,6 +153,14 @@ class ComplaintAttachment(Base):
     file_type: Mapped[str] = mapped_column(String(50), nullable=False) # e.g. "image/jpeg", "image/png"
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     
+    # OpenAI Vision 분석 결과 컬럼 추가
+    image_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    detected_objects: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    danger_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    image_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    photo_based_category_hint: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    recommended_action: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
     complaint: Mapped["Complaint"] = relationship(back_populates="attachments")
 
 
