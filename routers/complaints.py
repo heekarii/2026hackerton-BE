@@ -5,10 +5,25 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user_id
-from models import Complaint, ComplaintAttachment, ComplaintStatus
+from models import Category, Complaint, ComplaintAttachment, ComplaintStatus
 import schemas
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
+
+
+def _validate_category(db: Session, category_id: Optional[int]) -> None:
+    """category_id 가 주어졌으면 실제 존재하는 카테고리인지 검증한다.
+
+    존재하지 않으면 500(FK 위반) 대신 친절한 400 을 반환한다.
+    """
+    if category_id is None:
+        return
+    exists = db.query(Category.id).filter(Category.id == category_id).first()
+    if exists is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"존재하지 않는 카테고리입니다 (category_id={category_id}).",
+        )
 
 
 def _to_response(complaint: Complaint) -> schemas.ComplaintResponse:
@@ -42,6 +57,7 @@ def create_complaint(
     user_id: int = Depends(get_current_user_id),
 ):
     """민원 등록 엔드포인트. 등록된 민원의 상태는 기본값(received)으로 시작한다."""
+    _validate_category(db, payload.category_id)
     complaint = Complaint(
         user_id=user_id,
         title=payload.title,
@@ -142,6 +158,8 @@ def update_complaint(
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="수정할 내용이 없습니다.")
+    if "category_id" in updates:
+        _validate_category(db, updates["category_id"])
     for field, value in updates.items():
         setattr(complaint, field, value)
 
