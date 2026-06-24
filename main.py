@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.openai_analysis_endpoint import router as openai_router
 
 from routers.auth import router as auth_router
+from routers.admin_complaints import router as admin_complaints_router
 from routers.complaints import router as complaints_router
 
 
@@ -37,6 +38,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(admin_complaints_router)
 app.include_router(complaints_router)
 
 

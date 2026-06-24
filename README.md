@@ -72,6 +72,16 @@ python test_db.py
 
 Swagger의 **Authorize** 버튼에서는 username 칸에 이메일을 입력합니다.
 
+## 관리자 민원 처리 API
+
+관리자 또는 교직원 계정만 민원의 상태, 처리 답변, 담당 부서를 변경할 수
+있습니다. 모든 처리 내용은 `admin_actions` 테이블에 이력으로 저장됩니다.
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| PATCH | `/admin/complaints/{id}/process` | 상태 변경, 답변 등록, 담당 부서 변경 |
+| GET | `/admin/complaints/{id}/actions` | 관리자 처리 이력 조회 |
+
 ## 유관 부서 라우팅 API
 
 민원 제목, 내용, 개선 희망 사항, 장소를 부서별 키워드 목록과 비교해
