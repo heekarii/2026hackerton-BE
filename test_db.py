@@ -26,10 +26,12 @@ def test_orm_mapping():
             print("-" * 30)
             
         print("\n🎉 DB 설계 및 ORM 구현이 논리적 오류 없이 구성되었습니다.")
-        sys.exit(0)
     except Exception as e:
         print(f"❌ ORM 매핑 검증 오류 발생: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise
 
 if __name__ == "__main__":
-    test_orm_mapping()
+    try:
+        test_orm_mapping()
+    except Exception:
+        sys.exit(1)
