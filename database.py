@@ -1,6 +1,10 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+# .env 파일의 환경변수를 로드 (이미 설정된 환경변수는 덮어쓰지 않음)
+load_dotenv()
 
 # 환경변수로부터 데이터베이스 URL 로드 (기본값 제공)
 DATABASE_URL = os.getenv(
